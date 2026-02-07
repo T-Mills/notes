@@ -628,6 +628,9 @@ def analyse(filepath, sensitivity=0.55):
 @app.route("/")
 def index(): return render_template("index.html")
 
+@app.route("/health")
+def health(): return "ok", 200
+
 @app.route("/api/analyse", methods=["POST"])
 def api_analyse():
     if "file" not in request.files: return jsonify({"error":"No file"}), 400
