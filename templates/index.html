@@ -56,6 +56,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 .toggle input:checked+.tsl::before{transform:translateX(18px);background:#fff}
 .err{display:none;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.18);color:var(--rd);padding:14px 18px;border-radius:12px;margin-top:14px;font-size:.88rem}.err.on{display:block}
 @media(max-width:600px){.ctrl-grid{grid-template-columns:1fr}}
+.preset-row{display:flex;align-items:center;gap:14px;margin-top:16px;padding:10px 18px;background:var(--bg2);border-radius:14px;border:1px solid var(--brd)}
+.preset-btns{display:flex;gap:6px;flex-wrap:wrap}
+.preset-btn{font-family:var(--db);font-size:.78rem;padding:7px 14px;border-radius:8px;border:1px solid var(--brd);background:var(--bg-in);color:var(--s400);cursor:pointer;transition:all .2s;white-space:nowrap}
+.preset-btn:hover{border-color:var(--brd2);color:var(--s300)}
+.preset-btn.on{background:var(--a700);color:var(--a100);border-color:var(--a600);box-shadow:0 2px 8px rgba(245,158,11,.2)}
 /* Loading */
 .ld{display:none;text-align:center;padding:64px 20px}.ld.on{display:block}
 .ow{width:72px;height:72px;margin:0 auto 28px;position:relative}
@@ -197,9 +202,18 @@ footer a{color:var(--s500);text-decoration:none}footer a:hover{color:var(--a400)
     <div class="fmts"><span class="fm">MP3</span><span class="fm">WAV</span><span class="fm">FLAC</span><span class="fm">OGG</span><span class="fm">M4A</span><span class="fm">AAC</span><span class="fm">AIFF</span><span class="fm">OPUS</span></div>
     <input type="file" id="fi" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac,.wma,.aiff,.opus,.webm">
   </div>
+  <div class="preset-row">
+    <label style="font-size:.82rem;font-weight:500;color:var(--s400)">Preset</label>
+    <div class="preset-btns">
+      <button class="preset-btn" data-preset="detailed" title="Every chord change — best for instrumentals">🎹 Detailed</button>
+      <button class="preset-btn on" data-preset="balanced" title="Good all-round default">⚖️ Balanced</button>
+      <button class="preset-btn" data-preset="general" title="Broad strokes — handles vocals well">🎤 General</button>
+      <button class="preset-btn" data-preset="vocals" title="For pop/rock with prominent singing">🎙️ Vocals-heavy</button>
+    </div>
+  </div>
   <div class="ctrl"><label>Sensitivity</label><div class="slw"><input type="range" id="sens" min="0.2" max="0.9" step="0.05" value="0.55"><span class="sv" id="svl">0.55</span></div></div>
   <div class="ctrl-grid">
-    <div class="ctrl"><label>Min duration</label><div class="slw"><input type="range" id="mindur" min="0" max="4" step="0.25" value="0"><span class="sv" id="mdvl">0s</span></div></div>
+    <div class="ctrl"><label>Min chord duration</label><div class="slw"><input type="range" id="mindur" min="0" max="4" step="0.25" value="0.5"><span class="sv" id="mdvl">0.5s</span></div></div>
     <div class="ctrl"><label>Vocal filter</label><div class="slw"><input type="range" id="hpss" min="1" max="8" step="0.5" value="2"><span class="sv" id="hpvl">2</span></div></div>
   </div>
   <div class="ctrl"><label>Simplify chords</label><label class="toggle"><input type="checkbox" id="simpl"><span class="tsl"></span></label><span style="font-size:.75rem;color:var(--s500);margin-left:4px">Reduce to basic triads (major, minor, 7th)</span></div>
@@ -299,9 +313,28 @@ function fs(t){const m=Math.floor(t/60),s=Math.floor(t%60);return`${String(m).pa
 // ── Upload ──
 const dz=$('#dz'),fi=$('#fi'),sens=$('#sens'),svl=$('#svl');
 const mindur=$('#mindur'),mdvl=$('#mdvl'),hpss=$('#hpss'),hpvl=$('#hpvl'),simpl=$('#simpl');
-sens.oninput=()=>svl.textContent=sens.value;
-mindur.oninput=()=>mdvl.textContent=mindur.value==0?'0s':mindur.value+'s';
-hpss.oninput=()=>hpvl.textContent=hpss.value;
+sens.oninput=()=>{svl.textContent=sens.value;clearPreset()};
+mindur.oninput=()=>{mdvl.textContent=mindur.value==0?'0s':mindur.value+'s';clearPreset()};
+hpss.oninput=()=>{hpvl.textContent=hpss.value;clearPreset()};
+simpl.onchange=()=>clearPreset();
+
+// ── Presets ──
+const PRESETS = {
+  detailed:  { sens: 0.45, mindur: 0, hpss: 1.5, simplify: false },
+  balanced:  { sens: 0.55, mindur: 0.5, hpss: 2, simplify: false },
+  general:   { sens: 0.65, mindur: 1.5, hpss: 4, simplify: true },
+  vocals:    { sens: 0.75, mindur: 2, hpss: 6, simplify: true },
+};
+function applyPreset(name) {
+  const p = PRESETS[name]; if (!p) return;
+  sens.value = p.sens; svl.textContent = p.sens;
+  mindur.value = p.mindur; mdvl.textContent = p.mindur == 0 ? '0s' : p.mindur + 's';
+  hpss.value = p.hpss; hpvl.textContent = p.hpss;
+  simpl.checked = p.simplify;
+  $$('.preset-btn').forEach(b => b.classList.toggle('on', b.dataset.preset === name));
+}
+function clearPreset() { $$('.preset-btn').forEach(b => b.classList.remove('on')) }
+$$('.preset-btn').forEach(b => b.onclick = () => applyPreset(b.dataset.preset));
 ['dragenter','dragover'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('ov')}));
 ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('ov')}));
 dz.addEventListener('drop',ev=>{if(ev.dataTransfer.files.length)go(ev.dataTransfer.files[0])});
