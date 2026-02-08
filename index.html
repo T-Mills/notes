@@ -40,13 +40,22 @@ h1{font-family:var(--df);font-size:2.6rem;font-weight:700;color:var(--a50);lette
 .fmts{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin-top:14px}
 .fm{background:var(--bg-in);color:var(--s500);font-family:var(--dm);font-size:.65rem;padding:3px 10px;border-radius:20px;border:1px solid var(--brd)}
 #fi{display:none}
-.ctrl{display:flex;align-items:center;gap:16px;margin-top:16px;padding:14px 18px;background:var(--bg2);border-radius:14px;border:1px solid var(--brd)}
+.ctrl{display:flex;align-items:center;gap:16px;margin-top:10px;padding:14px 18px;background:var(--bg2);border-radius:14px;border:1px solid var(--brd)}
 .ctrl label{font-size:.82rem;font-weight:500;color:var(--s400);white-space:nowrap}
+.ctrl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.ctrl-grid .ctrl{margin-top:0}
 .slw{flex:1;display:flex;align-items:center;gap:12px}
 input[type=range]{flex:1;-webkit-appearance:none;height:3px;border-radius:3px;background:var(--brd2);outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--a400);cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,.3)}
 .sv{font-family:var(--dm);font-size:.78rem;color:var(--a300);min-width:34px;text-align:right}
+.toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .tsl{position:absolute;inset:0;border-radius:22px;background:var(--brd2);cursor:pointer;transition:.25s}
+.toggle .tsl::before{content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--s500);transition:.25s}
+.toggle input:checked+.tsl{background:var(--a400)}
+.toggle input:checked+.tsl::before{transform:translateX(18px);background:#fff}
 .err{display:none;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.18);color:var(--rd);padding:14px 18px;border-radius:12px;margin-top:14px;font-size:.88rem}.err.on{display:block}
+@media(max-width:600px){.ctrl-grid{grid-template-columns:1fr}}
 /* Loading */
 .ld{display:none;text-align:center;padding:64px 20px}.ld.on{display:block}
 .ow{width:72px;height:72px;margin:0 auto 28px;position:relative}
@@ -189,6 +198,11 @@ footer a{color:var(--s500);text-decoration:none}footer a:hover{color:var(--a400)
     <input type="file" id="fi" accept=".mp3,.wav,.flac,.ogg,.m4a,.aac,.wma,.aiff,.opus,.webm">
   </div>
   <div class="ctrl"><label>Sensitivity</label><div class="slw"><input type="range" id="sens" min="0.2" max="0.9" step="0.05" value="0.55"><span class="sv" id="svl">0.55</span></div></div>
+  <div class="ctrl-grid">
+    <div class="ctrl"><label>Min duration</label><div class="slw"><input type="range" id="mindur" min="0" max="4" step="0.25" value="0"><span class="sv" id="mdvl">0s</span></div></div>
+    <div class="ctrl"><label>Vocal filter</label><div class="slw"><input type="range" id="hpss" min="1" max="8" step="0.5" value="2"><span class="sv" id="hpvl">2</span></div></div>
+  </div>
+  <div class="ctrl"><label>Simplify chords</label><label class="toggle"><input type="checkbox" id="simpl"><span class="tsl"></span></label><span style="font-size:.75rem;color:var(--s500);margin-left:4px">Reduce to basic triads (major, minor, 7th)</span></div>
   <div class="err" id="err"></div>
 </div>
 
@@ -284,7 +298,10 @@ function fs(t){const m=Math.floor(t/60),s=Math.floor(t%60);return`${String(m).pa
 
 // ── Upload ──
 const dz=$('#dz'),fi=$('#fi'),sens=$('#sens'),svl=$('#svl');
+const mindur=$('#mindur'),mdvl=$('#mdvl'),hpss=$('#hpss'),hpvl=$('#hpvl'),simpl=$('#simpl');
 sens.oninput=()=>svl.textContent=sens.value;
+mindur.oninput=()=>mdvl.textContent=mindur.value==0?'0s':mindur.value+'s';
+hpss.oninput=()=>hpvl.textContent=hpss.value;
 ['dragenter','dragover'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('ov')}));
 ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('ov')}));
 dz.addEventListener('drop',ev=>{if(ev.dataTransfer.files.length)go(ev.dataTransfer.files[0])});
@@ -300,7 +317,7 @@ async function go(file){
   if(!['.mp3','.wav','.flac','.ogg','.m4a','.aac','.wma','.aiff','.opus','.webm'].includes(ext)){$('#err').textContent=`Unsupported: ${ext}`;$('#err').classList.add('on');return}
   $('#us').style.display='none';$('#res').classList.remove('on');$('#ld').classList.add('on');$('#lfn').textContent=file.name;
   $$('.steps .stp').forEach(s=>s.classList.remove('act','ok'));const iv=animS();
-  const fd=new FormData();fd.append('file',file);fd.append('sensitivity',sens.value);
+  const fd=new FormData();fd.append('file',file);fd.append('sensitivity',sens.value);fd.append('min_duration',mindur.value);fd.append('simplify',simpl.checked?'true':'false');fd.append('hpss_margin',hpss.value);
   try{const r=await fetch('/api/analyse',{method:'POST',body:fd});const d=await r.json();clearInterval(iv);$('#ld').classList.remove('on');
     if(d.error){$('#us').style.display='';$('#err').textContent=d.error;$('#err').classList.add('on');return}
     D=d;render(d);
